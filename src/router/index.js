@@ -1,25 +1,69 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
+import { createRouter, createWebHistory } from 'vue-router';
+import LoginView from '@/views/LoginView.vue';
 
 const routes = [
   {
     path: '/',
-    name: 'home',
-    component: HomeView
+    redirect: '/login'
   },
   {
-    path: '/about',
-    name: 'about',
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () => import(/* webpackChunkName: "about" */ '../views/AboutView.vue')
+    path: '/login',
+    name: 'login',
+    component: LoginView,
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/profesores',
+    name: 'profesores',
+    component: () => import('@/views/ProfesorView.vue'),
+    meta: { requiresAuth: true, requiredRole: 'profesor' },
+    children: [
+      {
+        path: 'alumnos',
+        component: () => import('@/views/AlumnosView.vue')
+      },
+      {
+        path: 'empresas',
+        component: () => import('@/views/EmpresasView.vue')
+      },
+      {
+        path: 'usuarios',
+        component: () => import('@/views/UsuariosView.vue')
+      }
+    ]
+  },
+  {
+    path: '/alumnos',
+    name: 'alumnos',
+    component: () => import('@/views/AlumnosView.vue'),
+    meta: { requiresAuth: true, requiredRole: 'alumno' }
   }
-]
+];
 
 const router = createRouter({
-  history: createWebHistory(process.env.BASE_URL),
+  history: createWebHistory(),
   routes
-})
+});
 
-export default router
+router.beforeEach((to, from, next) => {
+  const user = JSON.parse(localStorage.getItem('user'));
+
+  // Si la ruta requiere autenticación y no hay usuario, redirige a /login
+  if (to.meta.requiresAuth && !user) {
+    return next('/login');
+  }
+
+  // Si el usuario está autenticado, redirige según su rol
+  if (user) {
+    if (user.rol === 'profesor' && to.path === '/alumnos') {
+      return next('/profesores'); // Redirige a /profesores si el rol es profesor
+    }
+    if (user.rol !== 'profesor' && to.path === '/profesores') {
+      return next('/alumnos'); // Redirige a /alumnos para otros roles
+    }
+  }
+
+  // Si no hay problemas, permite la navegación
+  next();
+});
+export default router;
