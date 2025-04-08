@@ -32,35 +32,53 @@
   </template>
   
   <script>
-  import profesorService from '@/services/profesorService';
-  
-  export default {
-    data() {
-  return {
-    isLogin: true, // Alterna entre login y registro
-    form: {
-      name: '', // Cambia 'nombre' a 'name'
-      email: '',
-      password: '',
-      password_confirmation: '', // Solo se usa en el registro
-    },
-  };
-},
-    methods: {
-      async handleSubmit() {
+import profesorService from '@/services/profesorService';
+
+export default {
+  data() {
+    return {
+      isLogin: true, // Alterna entre login y registro
+      form: {
+        name: '', // Cambia 'nombre' a 'name'
+        email: '',
+        password: '',
+        password_confirmation: '', // Solo se usa en el registro
+      },
+    };
+  },
+  methods: {
+    async handleSubmit() {
   try {
     if (this.isLogin) {
       const response = await profesorService.login(this.form);
-      const userData = response.data;
+      const responseData = response.data; // Esta es la estructura que muestras en el console.log
+      
+      console.log('Datos completos de respuesta:', responseData); // Verifica la estructura completa
+
+      // Extraemos el usuario de la respuesta (según tu estructura mostrada)
+      const userData = responseData.user;
+      
+      if (!userData || !userData.role) {
+        throw new Error('La estructura de la respuesta no contiene los datos esperados');
+      }
+
+      console.log('Datos del usuario a guardar:', userData);
 
       // Guardar datos del usuario en localStorage
-      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('user', JSON.stringify({
+        id: userData.id,
+        name: userData.name,
+        email: userData.email,
+        role: userData.role
+      }));
 
-      // Redirigir según el rol
-      if (userData.rol === 'profesor') {
+      // Redirigir según el role
+      if (userData.role === 'profesor') {
         this.$router.push('/profesores');
-      } else {
+      } else if (userData.role === 'alumno') {
         this.$router.push('/alumnos');
+      } else {
+        alert('Role desconocido. Contacta al administrador.');
       }
     } else {
       await profesorService.register(this.form);
@@ -68,16 +86,16 @@
       this.isLogin = true;
     }
   } catch (error) {
-    console.error('Error del backend:', error.response?.data || error.message);
-    alert('Ocurrió un error. Por favor, inténtalo de nuevo.');
+    console.error('Error completo:', error);
+    alert(error.response?.data?.message || error.message || 'Error desconocido');
   }
 },
-      toggleForm() {
-        this.isLogin = !this.isLogin;
-      },
+    toggleForm() {
+      this.isLogin = !this.isLogin;
     },
-  };
-  </script>
+  },
+};
+</script>
   
   <style scoped>
   /* Contenedor principal para centrar el formulario */

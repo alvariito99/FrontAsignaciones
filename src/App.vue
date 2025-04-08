@@ -35,16 +35,16 @@ const logout = () => {
       <div class="collapse navbar-collapse">
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
           <!-- Menú para profesores -->
-          <li v-if="user?.rol === 'profesor'" class="nav-item">
+          <li v-if="user?.role === 'profesor'" class="nav-item">
             <router-link class="nav-link" to="/profesores/alumnos">Alumnos</router-link>
           </li>
-          <li v-if="user?.rol === 'profesor'" class="nav-item">
+          <li v-if="user?.role === 'profesor'" class="nav-item">
             <router-link class="nav-link" to="/profesores/empresas">Empresas</router-link>
           </li>
           <li v-if="user" class="nav-item">
             <router-link class="nav-link" to="/asignaciones">Asignaciones</router-link>
           </li>
-          <li v-if="user?.rol === 'profesor'" class="nav-item">
+          <li v-if="user?.role === 'profesor'" class="nav-item">
             <router-link class="nav-link" to="/profesores/usuarios">Usuarios</router-link>
           </li>
         </ul>

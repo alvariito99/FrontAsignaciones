@@ -46,24 +46,34 @@ const router = createRouter({
 });
 
 router.beforeEach((to, from, next) => {
-  const user = JSON.parse(localStorage.getItem('user'));
+  const userJson = localStorage.getItem('user');
+  const user = userJson ? JSON.parse(userJson) : null;
+  
+  console.log('Ruta destino:', to.path);
+  console.log('Usuario actual:', user);
 
-  // Si la ruta requiere autenticación y no hay usuario, redirige a /login
+  // Si la ruta requiere autenticación y no hay usuario, redirige a login
   if (to.meta.requiresAuth && !user) {
+    console.log('Redirigiendo a login: no autenticado');
     return next('/login');
   }
 
-  // Si el usuario está autenticado, redirige según su rol
-  if (user) {
-    if (user.rol === 'profesor' && to.path === '/alumnos') {
-      return next('/profesores'); // Redirige a /profesores si el rol es profesor
-    }
-    if (user.rol !== 'profesor' && to.path === '/profesores') {
-      return next('/alumnos'); // Redirige a /alumnos para otros roles
+  // Si hay usuario pero la ruta requiere un rol específico
+  if (to.meta.requiredRole && user?.role !== to.meta.requiredRole) {
+    console.log('Redirigiendo: rol incorrecto');
+    
+    // Redirige según el rol del usuario
+    if (user.role === 'profesor') {
+      return next('/profesores');
+    } else if (user.role === 'alumno') {
+      return next('/alumnos');
+    } else {
+      // Rol desconocido, redirige a login
+      return next('/login');
     }
   }
 
-  // Si no hay problemas, permite la navegación
+  // Si todo está bien, permite la navegación
   next();
 });
 export default router;
