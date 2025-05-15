@@ -1,11 +1,26 @@
 <template>
-  <div class="alumnos-container">
+  <div class="table-container">
     <h1>Gestión de Alumnos</h1>
 
-    <div class="actions">
+    <div class="table-actions">
       <button @click="abrirFormulario" class="btn-add">
         <i class="fas fa-plus"></i> Añadir Alumno
       </button>
+      <div class="filter-container">
+        <button @click="mostrarFiltros = !mostrarFiltros" class="btn-filter">
+          <i class="fas fa-filter"></i> Filtros
+        </button>
+        <div v-if="mostrarFiltros" class="filters-dropdown">
+          <select v-model="filtroNota" @change="aplicarFiltros">
+            <option value="">Todas las notas</option>
+            <option value="suspensos">Suspensos (menos de 5)</option>
+            <option value="suficientes">Suficientes (5-6)</option>
+            <option value="notables">Notables (7-8)</option>
+            <option value="sobresalientes">Sobresalientes (9-10)</option>
+          </select>
+        </div>
+      </div>
+
       <div class="search-box">
         <input 
           v-model="searchQuery" 
@@ -25,7 +40,7 @@
     </div>
 
     <div v-else>
-      <table class="alumnos-table">
+      <table class="data-table">
         <thead>
           <tr>
             <th @click="ordenarPor('id')">
@@ -43,7 +58,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="alumno in alumnosFiltrados" :key="alumno.id">
+          <tr v-for="alumno in alumnosPaginados" :key="alumno.id">
             <td>{{ alumno.id }}</td>
             <td>{{ alumno.nombre }}</td>
             <td>{{ alumno.apellido }}</td>
@@ -83,7 +98,7 @@
     </div>
 
     <!-- Modal para ver detalles -->
-    <div v-if="mostrarDetalle" class="form-overlay" @click.self="mostrarDetalle = false">
+    <div v-if="mostrarDetalle" class="modal-overlay" @click.self="mostrarDetalle = false">
       <div class="detail-container">
         <div class="detail-header">
           <h3>Detalles del Alumno</h3>
@@ -132,9 +147,9 @@
     </div>
 
     <!-- Modal para añadir/editar alumnos -->
-    <div v-if="mostrarFormulario" class="form-overlay" @click.self="cancelarFormulario">
-      <div class="form-container">
-        <div class="form-header">
+    <div v-if="mostrarFormulario" class="modal-overlay" @click.self="cancelarFormulario">
+      <div class="modal-container">
+        <div class="modal-header">
           <h3>{{ alumnoSeleccionado.id ? 'Editar Alumno' : 'Añadir Alumno' }}</h3>
           <button @click="cancelarFormulario" class="btn-close">
             <i class="fas fa-times"></i>
@@ -182,7 +197,7 @@
             </div>
           </div>
           
-          <div class="form-actions">
+          <div class="modal-actions">
             <button type="button" @click="cancelarFormulario" class="btn-cancel">
               Cancelar
             </button>
@@ -205,13 +220,9 @@
 
 <script>
 import alumnoService from '@/services/alumnoService';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 export default {
   name: 'AlumnosView',
-  components: {
-    FontAwesomeIcon
-  },
   data() {
     return {
       loading: true,
@@ -228,7 +239,9 @@ export default {
       itemsPorPagina: 10,
       mostrarNotificacion: false,
       notificacionMensaje: '',
-      notificacionTipo: 'success'
+      notificacionTipo: 'success',
+      mostrarFiltros: false,
+      filtroNota: ''
     };
   },
   computed: {
@@ -243,12 +256,66 @@ export default {
   },
   created() {
     this.cargarAlumnos();
+    this.checkUrlAction();
   },
   methods: {
+    aplicarFiltros() {
+      let alumnosFiltrados = [...this.alumnos];
+      
+      // Aplicar filtro de búsqueda si hay query
+      if (this.searchQuery) {
+        const query = this.searchQuery.toLowerCase();
+        alumnosFiltrados = alumnosFiltrados.filter(alumno => 
+          alumno.nombre.toLowerCase().includes(query) ||
+          alumno.apellido.toLowerCase().includes(query) ||
+          alumno.dni.toLowerCase().includes(query) ||
+          (alumno.email && alumno.email.toLowerCase().includes(query))
+        );
+      }
+      
+      // Aplicar filtro por nota si está seleccionado
+      if (this.filtroNota) {
+        alumnosFiltrados = alumnosFiltrados.filter(alumno => {
+          const nota = parseFloat(alumno.nota_curso);
+          
+          if (isNaN(nota)) return false;
+          
+          switch(this.filtroNota) {
+            case 'suspensos':
+              return nota < 5;
+            case 'suficientes':
+              return nota >= 5 && nota < 7;
+            case 'notables':
+              return nota >= 7 && nota < 9;
+            case 'sobresalientes':
+              return nota >= 9 && nota <= 10;
+            default:
+              return true;
+          }
+        });
+      }
+      
+      this.alumnosFiltrados = alumnosFiltrados;
+      this.paginaActual = 1;
+      this.ordenarAlumnos();
+    },
+    checkUrlAction() {
+      const query = this.$route.query;
+      if (query.action === 'add') {
+        this.abrirFormulario();
+      }
+    },
+
+    
+    filtrarAlumnos() {
+      this.aplicarFiltros();
+    },
+    
     verDetalle(alumno) {
       this.alumnoDetalle = { ...alumno };
       this.mostrarDetalle = true;
     },
+    
     getAlumnoVacio() {
       return {
         nombre: '',
@@ -259,6 +326,7 @@ export default {
         nota_curso: null
       };
     },
+    
     async cargarAlumnos() {
       try {
         this.loading = true;
@@ -273,17 +341,7 @@ export default {
         this.loading = false;
       }
     },
-    filtrarAlumnos() {
-      const query = this.searchQuery.toLowerCase();
-      this.alumnosFiltrados = this.alumnos.filter(alumno => 
-        alumno.nombre.toLowerCase().includes(query) ||
-        alumno.apellido.toLowerCase().includes(query) ||
-        alumno.dni.toLowerCase().includes(query) ||
-        (alumno.email && alumno.email.toLowerCase().includes(query))
-      );
-      this.paginaActual = 1;
-      this.ordenarAlumnos();
-    },
+    
     ordenarPor(campo) {
       if (this.ordenCampo === campo) {
         this.ordenDireccion = this.ordenDireccion === 'asc' ? 'desc' : 'asc';
@@ -293,6 +351,7 @@ export default {
       }
       this.ordenarAlumnos();
     },
+    
     ordenarAlumnos() {
       this.alumnosFiltrados.sort((a, b) => {
         let valorA = a[this.ordenCampo];
@@ -306,21 +365,26 @@ export default {
         return 0;
       });
     },
+    
     ordenIcono(campo) {
       if (this.ordenCampo !== campo) return 'fas fa-sort';
       return this.ordenDireccion === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
     },
+    
     abrirFormulario() {
       this.alumnoSeleccionado = this.getAlumnoVacio();
       this.mostrarFormulario = true;
     },
+    
     editarAlumno(alumno) {
       this.alumnoSeleccionado = { ...alumno };
       this.mostrarFormulario = true;
     },
+    
     cancelarFormulario() {
       this.mostrarFormulario = false;
     },
+    
     async eliminarAlumno(id) {
       if (confirm('¿Estás seguro de eliminar este alumno?')) {
         try {
@@ -333,6 +397,7 @@ export default {
         }
       }
     },
+    
     async guardarAlumno() {
       try {
         if (this.alumnoSeleccionado.id) {
@@ -349,6 +414,7 @@ export default {
         this.mostrarNotificacionError('Error al guardar el alumno');
       }
     },
+    
     mostrarNotificacionExito(mensaje) {
       this.notificacionMensaje = mensaje;
       this.notificacionTipo = 'success';
@@ -357,6 +423,7 @@ export default {
         this.mostrarNotificacion = false;
       }, 3000);
     },
+    
     mostrarNotificacionError(mensaje) {
       this.notificacionMensaje = mensaje;
       this.notificacionTipo = 'error';
@@ -364,9 +431,16 @@ export default {
       setTimeout(() => {
         this.mostrarNotificacion = false;
       }, 3000);
+    },
+    watch: {
+    '$route.query'(newQuery) {
+      if (newQuery.action === 'add') {
+        this.abrirFormulario();
+      }
     }
+  }
   }
 }
 </script>
 
-<style src="@/assets/css/UsuariosView.css" scoped></style> 
+<style src="@/assets/css/globalEstilos.css" scoped></style> 

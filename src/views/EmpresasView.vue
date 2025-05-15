@@ -1,15 +1,18 @@
 <template>
-  <div class="empresas-container">
+  <div class="table-container">
     <h1>Gestión de Empresas</h1>
 
-    <div class="actions">
+    <div class="table-actions">
       <button @click="abrirFormulario" class="btn-add">
         <i class="fas fa-plus"></i> Añadir Empresa
       </button>
+      <button @click="mostrarFiltros = true" class="btn-filter">
+        <i class="fas fa-filter"></i> Filtros
+      </button>
       <div class="search-box">
-        <input 
-          v-model="searchQuery" 
-          placeholder="Buscar empresas..." 
+        <input
+          v-model="searchQuery"
+          placeholder="Buscar empresas..."
           @input="filtrarEmpresas"
         />
         <i class="fas fa-search"></i>
@@ -25,7 +28,7 @@
     </div>
 
     <div v-else>
-      <table class="empresas-table">
+      <table class="data-table">
         <thead>
           <tr>
             <th @click="ordenarPor('id')">
@@ -63,33 +66,32 @@
       </table>
     </div>
 
-    <!-- Paginación -->
     <div v-if="!loading && empresasFiltradas.length > 0" class="pagination">
-      <button 
-        @click="paginaActual--" 
+      <button
+        @click="paginaActual--"
         :disabled="paginaActual === 1"
       >
         <i class="fas fa-chevron-left"></i>
       </button>
       <span>Página {{ paginaActual }} de {{ totalPaginas }}</span>
-      <button 
-        @click="paginaActual++" 
+      <button
+        @click="paginaActual++"
         :disabled="paginaActual === totalPaginas"
       >
         <i class="fas fa-chevron-right"></i>
       </button>
     </div>
 
-<!-- Modal para ver detalles -->
-<div v-if="mostrarDetalle" class="form-overlay" @click.self="mostrarDetalle = false">
+
+<div v-if="mostrarDetalle" class="modal-overlay" @click.self="mostrarDetalle = false">
   <div class="detail-container">
-    <div class="detail-header">
+    <div class="detail-container">
       <h3>Detalles de la Empresa</h3>
       <button @click="mostrarDetalle = false" class="btn-close">
         <i class="fas fa-times"></i>
       </button>
     </div>
-    
+
     <div class="detail-content">
       <div class="detail-row">
         <span class="detail-label">ID:</span>
@@ -140,8 +142,8 @@
         <span class="detail-value">{{ empresaDetalle.plazas_disponibles }}</span>
       </div>
     </div>
-    
-    <div class="detail-actions">
+
+    <div class="modal-actions">
       <button @click="mostrarDetalle = false" class="btn-close-detail">
         Cerrar
       </button>
@@ -149,20 +151,73 @@
   </div>
 </div>
 
+<div v-if="mostrarFiltros" class="modal-overlay" @click.self="cerrarFiltros">
+  <div class="modal-container">
+    <div class="modal-header">
+      <h3>Filtros Avanzados</h3>
+      <button @click="cerrarFiltros" class="btn-close">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-content">
+      <div class="filter-group">
+        <label>Sector:</label>
+        <select v-model="filtros.sector" class="form-control">
+          <option value="">Todos los sectores</option>
+          <option v-for="sector in sectoresUnicos" :value="sector" :key="sector">
+            {{ sector }}
+          </option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Representante:</label>
+        <input
+          v-model="filtros.representante"
+          placeholder="Filtrar por representante"
+          class="form-control"
+        />
+      </div>
+      <div class="filter-group">
+        <label>Plazas disponibles:</label>
+        <select v-model="filtros.plazas" class="form-control">
+          <option value="">Cualquier cantidad</option>
+          <option value="con-plazas">Con plazas disponibles</option>
+          <option value="sin-plazas">Sin plazas disponibles</option>
+          <option value="5+">5+ plazas</option>
+          <option value="10+">10+ plazas</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Tutor laboral:</label>
+        <input
+          v-model="filtros.tutor"
+          placeholder="Filtrar por tutor"
+          class="form-control"
+        />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button @click="aplicarFiltros" class="btn-apply">
+        Aplicar Filtros
+      </button>
+      <button @click="resetearFiltros" class="btn-clear">
+        Limpiar Filtros
+      </button>
+    </div>
+  </div>
+</div>
 
-    <!-- Modal para añadir/editar empresas -->
-    <div v-if="mostrarFormulario" class="form-overlay" @click.self="cancelarFormulario">
-      <div class="form-container">
-        <div class="form-header">
+    <div v-if="mostrarFormulario" class="modal-overlay" @click.self="cancelarFormulario">
+      <div class="modal-container">
+        <div class="modal-header">
           <h3>{{ empresaSeleccionada.id ? 'Editar Empresa' : 'Añadir Empresa' }}</h3>
           <button @click="cancelarFormulario" class="btn-close">
             <i class="fas fa-times"></i>
           </button>
         </div>
-        
+
         <form @submit.prevent="guardarEmpresa">
           <div class="form-columns">
-            <!-- Columna 1 -->
             <div>
               <div class="form-group">
                 <label>Nombre: <span class="required">*</span></label>
@@ -185,8 +240,7 @@
                 <input v-model="empresaSeleccionada.telefono" />
               </div>
             </div>
-            
-            <!-- Columna 2 -->
+
             <div>
               <div class="form-group">
                 <label>Email:</label>
@@ -210,16 +264,16 @@
               </div>
               <div class="form-group">
                 <label>Plazas Disponibles: <span class="required">*</span></label>
-                <input 
-                  v-model.number="empresaSeleccionada.plazas_disponibles" 
-                  type="number" 
-                  min="0" 
-                  required 
+                <input
+                  v-model.number="empresaSeleccionada.plazas_disponibles"
+                  type="number"
+                  min="0"
+                  required
                 />
               </div>
             </div>
           </div>
-          
+
           <div class="form-actions">
             <button type="button" @click="cancelarFormulario" class="btn-cancel">
               Cancelar
@@ -232,7 +286,6 @@
       </div>
     </div>
 
-    <!-- Notificaciones -->
     <transition name="fade">
       <div v-if="mostrarNotificacion" class="notification" :class="notificacionTipo">
         {{ notificacionMensaje }}
@@ -259,6 +312,13 @@ export default {
       empresaDetalle: null,
       empresas: [],
       empresasFiltradas: [],
+      mostrarFiltros: false,
+      filtros: {
+        sector: '',
+        representante: '',
+        plazas: '',
+        tutor: ''
+      },
       empresaSeleccionada: this.getEmpresaVacia(),
       searchQuery: '',
       ordenCampo: 'id',
@@ -271,6 +331,13 @@ export default {
     };
   },
   computed: {
+    sectoresUnicos() {
+      const sectores = new Set();
+      this.empresas.forEach(empresa => {
+        if (empresa.sector) sectores.add(empresa.sector);
+      });
+      return Array.from(sectores).sort();
+    },
     totalPaginas() {
       return Math.ceil(this.empresasFiltradas.length / this.itemsPorPagina);
     },
@@ -284,6 +351,68 @@ export default {
     this.cargarEmpresas();
   },
   methods: {
+    cerrarFiltros() {
+    this.mostrarFiltros = false;
+  },
+  aplicarFiltros() {
+    this.empresasFiltradas = this.empresas.filter(empresa => {
+      // Filtro por sector
+      if (this.filtros.sector && empresa.sector !== this.filtros.sector) {
+        return false;
+      }
+
+      // Filtro por representante (búsqueda parcial)
+      if (this.filtros.representante && 
+          !empresa.representante?.toLowerCase().includes(this.filtros.representante.toLowerCase())) {
+        return false;
+      }
+
+      // Filtro por tutor laboral (búsqueda parcial)
+      if (this.filtros.tutor && 
+          !empresa.tutor_laboral?.toLowerCase().includes(this.filtros.tutor.toLowerCase())) {
+        return false;
+      }
+
+      // Filtro por plazas disponibles
+      if (this.filtros.plazas) {
+        const plazas = empresa.plazas_disponibles || 0;
+
+        switch(this.filtros.plazas) {
+          case 'con-plazas': 
+            if (plazas <= 0) return false;
+            break;
+          case 'sin-plazas': 
+            if (plazas > 0) return false;
+            break;
+          case '5+': 
+            if (plazas < 5) return false;
+            break;
+          case '10+': 
+            if (plazas < 10) return false;
+            break;
+        }
+      }
+
+      return true;
+    });
+
+    this.paginaActual = 1;
+    this.ordenarEmpresas();
+
+    // Cerrar el modal después de aplicar los filtros
+    this.cerrarFiltros();
+  },
+    
+    // Método para resetear todos los filtros
+    resetearFiltros() {
+      this.filtros = {
+        sector: '',
+        representante: '',
+        plazas: '',
+        tutor: ''
+      };
+      this.filtrarEmpresas(); // Vuelve a aplicar solo el filtro de búsqueda general
+    },
     verDetalle(empresa) {
     this.empresaDetalle = { ...empresa };
     this.mostrarDetalle = true;
@@ -320,17 +449,22 @@ export default {
   },
 
   filtrarEmpresas() {
-    const query = this.searchQuery.toLowerCase();
-    this.empresasFiltradas = this.empresas.filter(empresa => 
-      empresa.nombre.toLowerCase().includes(query) ||
-      empresa.cif.toLowerCase().includes(query) ||
-      empresa.sector.toLowerCase().includes(query) ||
-      empresa.direccion.toLowerCase().includes(query)
-    );
-    this.paginaActual = 1;
-    this.ordenarEmpresas();
-  },
-
+      const query = this.searchQuery.toLowerCase();
+      this.empresasFiltradas = this.empresas.filter(empresa => 
+        (empresa.nombre?.toLowerCase() || '').includes(query) ||
+        (empresa.cif?.toLowerCase() || '').includes(query) ||
+        (empresa.sector?.toLowerCase() || '').includes(query) ||
+        (empresa.direccion?.toLowerCase() || '').includes(query)
+      );
+      
+      // Aplicar también los filtros avanzados si hay alguno activo
+      if (Object.values(this.filtros).some(filtro => filtro !== '')) {
+        this.aplicarFiltros();
+      } else {
+        this.paginaActual = 1;
+        this.ordenarEmpresas();
+      }
+    },
   ordenarPor(campo) {
     if (this.ordenCampo === campo) {
       this.ordenDireccion = this.ordenDireccion === 'asc' ? 'desc' : 'asc';
@@ -426,5 +560,5 @@ export default {
 
 </script>
 
-<style src="@/assets/css/EmpresasView.css" scoped></style> 
+<style src="@/assets/css/globalEstilos.css" scoped></style> 
 

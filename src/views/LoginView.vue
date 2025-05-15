@@ -74,10 +74,10 @@ export default {
 
       // Redirigir según el role
       if (userData.role === 'profesor') {
-        this.$router.push('/profesores');
-      } else if (userData.role === 'alumno') {
-        this.$router.push('/alumnos');
-      } else {
+  this.$router.push('/inicio');  // Profesor va a /inicio
+} else if (userData.role === 'alumno') {
+  this.$router.push('/inicio');  // Alumno también va a /inicio
+}else {
         alert('Role desconocido. Contacta al administrador.');
       }
     } else {
@@ -106,10 +106,25 @@ export default {
     align-items: center;
     height: 100vh; /* Ocupa toda la altura de la ventana */
     width: 100vw; /* Ocupa todo el ancho de la ventana */
-    background: linear-gradient(135deg, #007bff, #0056b3); /* Fondo degradado */
-    margin: 0; /* Asegúrate de que no haya márgenes */
-    padding: 0; /* Asegúrate de que no haya padding */
-    box-sizing: border-box; /* Incluye bordes y padding en el tamaño total */
+    background: 
+    /* 1. Overlay oscuro para legibilidad (75% de opacidad) */
+    linear-gradient(rgba(0, 35, 102, 0.75), rgba(0, 86, 179, 0.75)),
+    
+    /* 2. Logo escalado al 120% del viewport y centrado */
+    url('@/assets/fomdomarisma.png') center/120vmin no-repeat,
+    
+    /* 3. Degradado base institucional */
+    linear-gradient(135deg, #002366, #0056b3);
+  
+  /* Mezcla de capas para mejor contraste */
+  background-blend-mode: overlay, luminosity, normal;
+  
+  /* Asegura cobertura total */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   }
   
   /* Contenedor del título */

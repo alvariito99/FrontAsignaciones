@@ -1,15 +1,15 @@
 <template>
-  <div class="usuarios-container">
+  <div class="table-container">
     <h1>Gestión de Usuarios</h1>
 
-    <div class="actions">
+    <div class="table-actions">
       <button @click="abrirFormulario" class="btn-add">
         <i class="fas fa-plus"></i> Añadir Usuario
       </button>
       <div class="search-box">
-        <input 
-          v-model="searchQuery" 
-          placeholder="Buscar usuarios..." 
+        <input
+          v-model="searchQuery"
+          placeholder="Buscar usuarios..."
           @input="filtrarUsuarios"
         />
         <i class="fas fa-search"></i>
@@ -25,7 +25,7 @@
     </div>
 
     <div v-else>
-      <table class="usuarios-table">
+      <table class="data-table">
         <thead>
           <tr>
             <th @click="ordenarPor('id')">
@@ -65,6 +65,7 @@
       </table>
     </div>
 
+    <!-- Paginación -->
     <div v-if="!loading && usuariosFiltrados.length > 0" class="pagination">
       <button 
         @click="paginaActual--" 
@@ -81,7 +82,8 @@
       </button>
     </div>
 
-    <div v-if="mostrarDetalle" class="form-overlay" @click.self="mostrarDetalle = false">
+    <!-- Modal para ver detalles -->
+    <div v-if="mostrarDetalle" class="modal-overlay" @click.self="mostrarDetalle = false">
       <div class="detail-container">
         <div class="detail-header">
           <h3>Detalles del Usuario</h3>
@@ -89,7 +91,7 @@
             <i class="fas fa-times"></i>
           </button>
         </div>
-        
+
         <div class="detail-content">
           <div class="detail-row">
             <span class="detail-label">ID:</span>
@@ -103,12 +105,12 @@
             <span class="detail-label">Email:</span>
             <span class="detail-value">{{ usuarioDetalle.email }}</span>
           </div>
-           <div class="detail-row">
+          <div class="detail-row">
             <span class="detail-label">Rol:</span>
             <span class="detail-value">{{ usuarioDetalle.role }}</span>
           </div>
         </div>
-        
+
         <div class="detail-actions">
           <button @click="mostrarDetalle = false" class="btn-close-detail">
             Cerrar
@@ -117,15 +119,16 @@
       </div>
     </div>
 
-    <div v-if="mostrarFormulario" class="form-overlay" @click.self="cancelarFormulario">
-      <div class="form-container">
-        <div class="form-header">
+    <!-- Modal para añadir/editar usuarios -->
+    <div v-if="mostrarFormulario" class="modal-overlay" @click.self="cancelarFormulario">
+      <div class="modal-container">
+        <div class="modal-header">
           <h3>{{ usuarioSeleccionado.id ? 'Editar Usuario' : 'Añadir Usuario' }}</h3>
           <button @click="cancelarFormulario" class="btn-close">
             <i class="fas fa-times"></i>
           </button>
         </div>
-        
+
         <form @submit.prevent="guardarUsuario">
           <div class="form-columns">
             <div>
@@ -137,22 +140,25 @@
                 <label>Email: <span class="required">*</span></label>
                 <input v-model="usuarioSeleccionado.email" type="email" required />
               </div>
-              <div class="form-group">
-                <label>Contraseña: <span v-if="!usuarioSeleccionado.id" class="required">*</span></label>
-                <input v-model="usuarioSeleccionado.password" type="password" :required="!usuarioSeleccionado.id" />
+              <div v-if="!usuarioSeleccionado.id" class="form-group">
+                <label>Contraseña: <span class="required">*</span></label>
+                <input v-model="usuarioSeleccionado.password" type="password" required />
+              </div>
+              <div v-if="!usuarioSeleccionado.id" class="form-group">
+                <label>Confirmar Contraseña: <span class="required">*</span></label>
+                <input v-model="confirmPassword" type="password" required />
               </div>
               <div class="form-group">
-                <label>Rol: <span class="required">*</span></label>
-                <select v-model="usuarioSeleccionado.role" required>
-                  <option value="admin">Administrador</option>
-                  <option value="user">Usuario</option>
-                  <option value="guest">Invitado</option>
-                </select>
-              </div>
+  <label>Rol: <span class="required">*</span></label>
+  <select v-model="usuarioSeleccionado.role" class="form-control" required>
+    <option value="alumno">Alumno</option>
+    <option value="profesor">Profesor</option>
+  </select>
+</div>
             </div>
           </div>
-          
-          <div class="form-actions">
+
+          <div class="modal-actions">
             <button type="button" @click="cancelarFormulario" class="btn-cancel">
               Cancelar
             </button>
@@ -164,6 +170,7 @@
       </div>
     </div>
 
+    <!-- Notificaciones -->
     <transition name="fade">
       <div v-if="mostrarNotificacion" class="notification" :class="notificacionTipo">
         {{ notificacionMensaje }}
@@ -183,6 +190,8 @@ export default {
   },
   data() {
     return {
+      confirmPassword: '', // Añadir esta línea para la confirmación de contraseña
+      usuarioSeleccionado: this.getUsuarioVacio(),
       loading: true,
       mostrarFormulario: false,
       mostrarDetalle: false,
@@ -220,10 +229,11 @@ export default {
     },
     getUsuarioVacio() {
       return {
+        id: null, // Cambiado para mejor control
         name: '',
         email: '',
         password: '',
-        role: ''
+        role: 'alumno' // Valor por defecto
       };
     },
     async cargarUsuarios() {
@@ -281,9 +291,15 @@ export default {
       this.mostrarFormulario = true;
     },
     editarUsuario(usuario) {
-      this.usuarioSeleccionado = { ...usuario };
-      this.mostrarFormulario = true;
-    },
+  console.log('Datos del usuario a editar:', usuario); // Verifica qué contiene usuario.role
+  this.usuarioSeleccionado = { 
+    id: usuario.id,
+    name: usuario.name,
+    email: usuario.email,
+    role: usuario.role || 'alumno', // Si no tiene rol, asigna 'alumno' por defecto
+  };
+  this.mostrarFormulario = true;
+},
     cancelarFormulario() {
       this.mostrarFormulario = false;
     },
@@ -337,4 +353,4 @@ export default {
 
 
 
-<style src="@/assets/css/UsuariosView.css" scoped></style>
+<style src="@/assets/css/globalEstilos.css" scoped></style>

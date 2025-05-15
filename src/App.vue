@@ -1,47 +1,16 @@
-<script setup>
-import { RouterView } from 'vue-router';
-import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-
-const router = useRouter();
-const user = ref(null); // Almacenará todos los datos del usuario, incluido el rol
-
-// Verificar usuario al cargar la aplicación
-onMounted(() => {
-  const userData = localStorage.getItem('user');
-  if (userData) {
-    user.value = JSON.parse(userData);
-  }
-});
-
-// Observar cambios de ruta para actualizar el usuario
-router.afterEach(() => {
-  const userData = localStorage.getItem('user');
-  user.value = userData ? JSON.parse(userData) : null;
-});
-
-// Función para cerrar sesión
-const logout = () => {
-  localStorage.removeItem('user');
-  user.value = null;
-  router.push('/login');
-};
-</script>
-
 <template>
-  <nav class="navbar navbar-expand-lg navbar-light bg-light">
+  <nav v-if="user && $route.path !== '/login'" class="navbar navbar-expand-lg navbar-light bg-light">
     <div class="container-fluid">
-      <router-link class="navbar-brand" to="/">DualMarisma</router-link>
-      <div class="collapse navbar-collapse">
-        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-          <!-- Menú para profesores -->
+      <router-link class="navbar-brand" to="/inicio">DualMarisma</router-link> <!-- Cambiado a /inicio -->
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul v-if="user" class="navbar-nav me-auto mb-2 mb-lg-0">
           <li v-if="user?.role === 'profesor'" class="nav-item">
             <router-link class="nav-link" to="/profesores/alumnos">Alumnos</router-link>
           </li>
           <li v-if="user?.role === 'profesor'" class="nav-item">
             <router-link class="nav-link" to="/profesores/empresas">Empresas</router-link>
           </li>
-          <li v-if="user" class="nav-item">
+          <li class="nav-item">
             <router-link class="nav-link" to="/asignaciones">Asignaciones</router-link>
           </li>
           <li v-if="user?.role === 'profesor'" class="nav-item">
@@ -58,6 +27,41 @@ const logout = () => {
   <RouterView />
 </template>
 
+<script setup>
+import { RouterView, useRoute } from 'vue-router'
+import { ref, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+const route = useRoute()
+const user = ref(null)
+
+const checkAuth = () => {
+  const userData = localStorage.getItem('user')
+  user.value = userData ? JSON.parse(userData) : null
+  
+  // Si no hay usuario y no estamos en login, redirigir
+  if (!user.value && route.path !== '/login') {
+    router.push('/login')
+  }
+}
+
+onMounted(() => {
+  checkAuth()
+})
+
+// Observar cambios en la ruta
+watch(() => route.path, () => {
+  checkAuth()
+})
+
+const logout = () => {
+  localStorage.removeItem('user')
+  user.value = null
+  router.push('/login')
+}
+</script>
+
 <style>
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
@@ -68,12 +72,13 @@ const logout = () => {
 }
 
 nav {
-  padding: 30px;
+  padding: 15px;
 }
 
 nav a {
   font-weight: bold;
   color: #2c3e50;
+  text-decoration: none;
 }
 
 nav a.router-link-exact-active {
@@ -81,6 +86,14 @@ nav a.router-link-exact-active {
 }
 
 .btn-outline-danger {
+  margin-left: 10px;
+}
+
+.navbar-brand {
+  font-size: 1.5rem;
+}
+
+.navbar-nav .nav-link {
   margin-left: 10px;
 }
 </style>

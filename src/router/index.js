@@ -1,16 +1,23 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import LoginView from '@/views/LoginView.vue';
+import InicioView from '@/views/InicioView.vue';
 
 const routes = [
   {
     path: '/',
-    redirect: '/login'
+    redirect: '/login', 
+  },
+  {
+    path: '/inicio',
+    name: 'inicio',
+    component: InicioView,
+    meta: { requiresAuth: true }, // Cambiado a true para proteger esta ruta
   },
   {
     path: '/login',
     name: 'login',
     component: LoginView,
-    meta: { requiresAuth: false }
+    meta: { requiresAuth: false },
   },
   {
     path: '/profesores',
@@ -20,57 +27,64 @@ const routes = [
     children: [
       {
         path: 'alumnos',
-        component: () => import('@/views/AlumnosView.vue')
+        component: () => import('@/views/AlumnosView.vue'),
       },
       {
         path: 'empresas',
-        component: () => import('@/views/EmpresasView.vue')
+        component: () => import('@/views/EmpresasView.vue'),
       },
       {
         path: 'usuarios',
-        component: () => import('@/views/UsuariosView.vue')
-      }
-    ]
+        component: () => import('@/views/UsuariosView.vue'),
+      },
+    ],
   },
   {
     path: '/alumnos',
     name: 'alumnos',
     component: () => import('@/views/AlumnosView.vue'),
-    meta: { requiresAuth: true, requiredRole: 'alumno' }
+    meta: { requiresAuth: true, requiredRole: 'alumno' },
+  },
+  {
+    path: '/asignaciones',
+    name: 'asignaciones',
+    component: () => import('@/views/AsignacionesView.vue'),
+    meta: { 
+      requiresAuth: true,
+      allowedRoles: ['profesor', 'alumno'] // Permitir ambos roles
+    },
   }
 ];
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes,
 });
 
 router.beforeEach((to, from, next) => {
   const userJson = localStorage.getItem('user');
   const user = userJson ? JSON.parse(userJson) : null;
-  
-  console.log('Ruta destino:', to.path);
-  console.log('Usuario actual:', user);
 
-  // Si la ruta requiere autenticación y no hay usuario, redirige a login
-  if (to.meta.requiresAuth && !user) {
-    console.log('Redirigiendo a login: no autenticado');
+  // 1. Redirige siempre la ruta raíz (/) a /login
+  if (to.path === '/') {
     return next('/login');
   }
 
-  // Si hay usuario pero la ruta requiere un rol específico
-  if (to.meta.requiredRole && user?.role !== to.meta.requiredRole) {
-    console.log('Redirigiendo: rol incorrecto');
-    
-    // Redirige según el rol del usuario
-    if (user.role === 'profesor') {
-      return next('/profesores');
-    } else if (user.role === 'alumno') {
-      return next('/alumnos');
-    } else {
-      // Rol desconocido, redirige a login
-      return next('/login');
+  // 2. Si la ruta requiere autenticación y no hay usuario, redirige a login
+  if (to.meta.requiresAuth && !user) {
+    return next('/login');
+  }
+
+  // 3. Verificación de roles (allowedRoles)
+  if (to.meta.allowedRoles) {
+    if (!user || !to.meta.allowedRoles.includes(user.role)) {
+      return next('/login'); // Siempre redirige a login si no tiene permiso
     }
+  }
+
+  // 4. Verificación de rol específico (requiredRole)
+  if (to.meta.requiredRole && user?.role !== to.meta.requiredRole) {
+    return next('/login'); // Redirige a login si el rol no coincide
   }
 
   // Si todo está bien, permite la navegación
